@@ -1,5 +1,6 @@
 package org.example;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -47,8 +48,32 @@ public class ImageController
 
     @PostMapping("/increaseBrightnessBytes")
     public ResponseEntity<byte[]> increaseBrightnessBytes(@RequestBody Image image) {
-
-
+        String imageString="";
+        String base64 = image.getImageBase64();
+        int brightness = image.getBrightness();
+        String imageCode;
+        String imageType;
+        String[] a = base64.split(",",2);
+        imageType = a[0];
+        imageCode = a[1];
+        imageType = imageType.substring(imageType.indexOf("/")+1, imageType.indexOf(";"));
+        byte[] decodedBytes = Base64.getDecoder().decode(imageCode);
+        byte[] imageBytes = new byte[0];
+        try {
+            BufferedImage bufferedImage = ImageIO.read(new ByteArrayInputStream(decodedBytes));
+            changeBrightness(bufferedImage, brightness);
+            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+            ImageIO.write(bufferedImage,imageType,byteArrayOutputStream);
+            imageBytes = byteArrayOutputStream.toByteArray();
+            byteArrayOutputStream.close();
+            HttpHeaders headers = new HttpHeaders();
+            headers.add("Content-Type", "image/" + imageType);
+            headers.add("Content-Length", String.valueOf(imageBytes.length));
+        } catch (IOException e) {
+            System.out.println(e.getMessage());
+            return new ResponseEntity<>(imageBytes, HttpStatus.BAD_REQUEST);
+        }
+        return new ResponseEntity<>(imageBytes, HttpStatus.OK);
     }
 
     private void changeBrightness(BufferedImage originalImage, int brightness) {
